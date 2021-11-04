@@ -10,9 +10,11 @@ ext.checkJavaResourcesAreComplete = { List<String> requires ->
                     task.doLast {
                         println this.name + ":" + task.name
 
-                        final outputJar = task.outputs.files.files.stream().filter {
-                            it.name.endsWith('.jar')
-                        }.collect(Collectors.toList()).get(0)
+                        def outputJar = task.outputs.files.files.stream().collect(Collectors.toList()).get(0)
+
+                        if (outputJar.isDirectory()) {
+                            outputJar = new File(outputJar, '0.jar')
+                        }
 
                         println outputJar
 
