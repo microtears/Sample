@@ -1,0 +1,59 @@
+import java.util.stream.Collectors
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+
+ext.checkJavaResourcesAreComplete = { List<String> requires ->
+    project.afterEvaluate {
+        project.getTasks()
+                .matching { it.name.matches('.*[Mm]erge.*JavaRes.*') }
+                .forEach { task ->
+                    task.doLast {
+                        println this.name + ":" + task.name
+
+                        final outputJar = task.outputs.files.files.stream().filter {
+                            it.name.endsWith('.jar')
+                        }.collect(Collectors.toList()).get(0)
+
+                        println outputJar
+
+
+                        final zipFile = new ZipFile(outputJar)
+                        final resources = zipFile.stream()
+                                .map {
+                                    final entry = (ZipEntry) it
+                                    entry.name
+                                }
+                                .collect(Collectors.toSet())
+
+                        // println resources.stream().collect(Collectors.joining('\n'))
+
+                        requires.forEach {
+                            if (!resources.contains(it)) {
+                                throw new RuntimeException("The packaged resource lacks the necessary Java resource, file name: $it")
+                            }
+                        }
+                    }
+                }
+    }
+}
+
+ext.onSync = {
+//    final tasks = [
+//            'mergeDebugJavaResource',
+//            'app:mergeDebugJavaResource',
+//            'app:mergeReleaseJavaResource',
+//            'app:mergeDebugAndroidTestJavaResource',
+//            'transformResourcesWithMergeJavaResForDebug m===m false',
+//            ':NewsArticle:transformResourcesWithMergeJavaResForDebug',
+//            'transformResourcesWithMergeJavaResForDebugAndroidTest m===m false t',
+//            'ransformResourcesWithMergeJavaResForDebugUnitTest m===m false',
+//            'transformResourcesWithMergeJavaResForRelease m===m false',
+//            'transformResourcesWithMergeJavaResForReleaseUnitTest m===m false',
+//
+//    ]
+//
+//    tasks.forEach {
+//        println it + "@  " + it.matches('.*[Mm]erge.*JavaRes.*')
+//    }
+
+}
