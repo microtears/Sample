@@ -51,5 +51,6 @@ final requires = [
         'kotlin/reflect/reflect.kotlin_builtins',
 ]
 
+final ignoresPrefix = ['assets', 'res','META-INF']
 
-checkJavaResourcesAreComplete(requires)
+checkJavaResourcesAreComplete(requires, ignoresPrefix)

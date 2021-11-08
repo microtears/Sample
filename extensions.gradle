@@ -1,37 +1,67 @@
 import java.util.stream.Collectors
+import java.util.stream.Stream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 
-ext.checkJavaResourcesAreComplete = { List<String> requires ->
+static ZipFile getOutputJar(List<String> outputs) {
+    ZipFile result = null
+    outputs.stream()
+            .map { path -> new File(path.toString()) }
+            .flatMap {
+                if (it.isFile()) {
+                    //noinspection UnnecessaryQualifiedReference
+                    return Stream.of(it)
+                } else {
+                    return Arrays.stream(it.listFiles())
+                }
+            }
+            .forEach {
+                if (it.isFile() && it.name.matches('.*(jar|apk)') && result == null) {
+                    try {
+                        result = new ZipFile(it)
+                    } catch (Throwable e) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+    return result
+}
+
+ext.checkJavaResourcesAreComplete = { List<String> requires, List<String> ignoresPrefix ->
     project.afterEvaluate {
         project.getTasks()
-                .matching { it.name.matches('.*[Mm]erge.*JavaRes.*') }
+                .matching {
+                    it.name.matches('.*([Mm]erge.*JavaRes.*|package.*)')
+                }
                 .forEach { task ->
+                    println "checkJavaResourcesAreComplete@" + task.name
                     task.doLast {
-                        println this.name + ":" + task.name
+                        println "Executing checkJavaResourcesAreComplete@" + this.name + ":" + task.name
 
-                        def outputJar = task.outputs.files.files.stream().collect(Collectors.toList()).get(1)
+                        def outputJar = getOutputJar(task.outputs.files.files.stream().collect(Collectors.toList()))
 
-                        if (outputJar.isDirectory()) {
-                            outputJar = new File(outputJar, '0.jar')
-                        }
+                        println outputJar.name
 
-                        println outputJar
-
-
-                        final zipFile = new ZipFile(outputJar)
-                        final resources = zipFile.stream()
+                        final resources = outputJar.stream()
                                 .map {
                                     final entry = (ZipEntry) it
                                     entry.name
                                 }
+                                .filter { path ->
+                                    ignoresPrefix
+                                            .stream()
+                                            .map {
+                                                path.startsWith(it)
+                                            }
+                                            .allMatch { !it }
+                                }
                                 .collect(Collectors.toSet())
 
-                        // println resources.stream().collect(Collectors.joining('\n'))
+                        println resources.stream().collect(Collectors.joining('\n'))
 
                         requires.forEach {
                             if (!resources.contains(it)) {
-                                throw new RuntimeException("The packaged resource lacks the necessary Java resource, file name: $it")
+                                throw new RuntimeException("The packaged resource lacks the necessary Java resource, file name: $it, task: ${task.name}")
                             }
                         }
                     }
@@ -40,22 +70,4 @@ ext.checkJavaResourcesAreComplete = { List<String> requires ->
 }
 
 ext.onSync = {
-//    final tasks = [
-//            'mergeDebugJavaResource',
-//            'app:mergeDebugJavaResource',
-//            'app:mergeReleaseJavaResource',
-//            'app:mergeDebugAndroidTestJavaResource',
-//            'transformResourcesWithMergeJavaResForDebug m===m false',
-//            ':NewsArticle:transformResourcesWithMergeJavaResForDebug',
-//            'transformResourcesWithMergeJavaResForDebugAndroidTest m===m false t',
-//            'ransformResourcesWithMergeJavaResForDebugUnitTest m===m false',
-//            'transformResourcesWithMergeJavaResForRelease m===m false',
-//            'transformResourcesWithMergeJavaResForReleaseUnitTest m===m false',
-//
-//    ]
-//
-//    tasks.forEach {
-//        println it + "@  " + it.matches('.*[Mm]erge.*JavaRes.*')
-//    }
-
 }
